@@ -1,0 +1,16 @@
+[package]
+name = "bfvm"
+version = "0.0.1"
+
+[dependencies.bf]
+path = "bf"
+
+[dependencies.sexp]
+path = "sexp"
+
+[dependencies.bencode]
+path = "bencode"
+
+[lib]
+name = "rt"
+path = "lib.rs"

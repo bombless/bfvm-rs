@@ -1,0 +1,7 @@
+[package]
+name = "bf"
+version = "0.0.1"
+
+[lib]
+name = "bf"
+path = "lib.rs"
