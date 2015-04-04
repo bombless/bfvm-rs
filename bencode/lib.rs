@@ -2,9 +2,28 @@
 #![feature(convert)]
 
 use std::fmt::{Debug, Formatter, Error};
+use std::error::FromError;
 
-const E: u8 = 'e' as u8;
-const COLON: u8 = ':' as u8;
+const E: u8 = b'e';
+const COLON: u8 = b':';
+
+pub fn object<'a>(kind: &'a str, content: &'a [u8])->Vec<u8> {
+    let mut ret = Vec::new();
+    ret.push(b'd');
+    ret.extend(byte_string(kind.as_bytes()));
+    ret.extend(byte_string(content));
+    ret.push(b'e');
+    ret
+}
+
+pub fn byte_string(s: &[u8])->Vec<u8> {
+    let mut ret = Vec::new();
+    let len = s.len();
+    ret.extend(format!("{}", len).bytes());
+    ret.push(b':');
+    ret.extend(s.iter().cloned());
+    ret
+}
 
 pub enum ParseResult {
     Char(u8),
@@ -16,7 +35,11 @@ impl Debug for ParseResult {
     fn fmt(&self, f: &mut Formatter)->Result<(), Error> {
         match self {
             &ParseResult::Char(ref c) => {
-                write!(f, "unexpected character {}", c)
+                let fmt = match std::char::from_u32(*c as u32) {
+                    Some(x) => x.escape_default().collect(),
+                    None => format!("0x{:02X}", c)
+                };
+                write!(f, "unexpected character `{}`", fmt)
             },
             &ParseResult::Val(ref v) => {
                 write!(f, "unexpected value {:?}", v)
@@ -30,7 +53,7 @@ impl Debug for ParseResult {
 
 use ParseResult::*;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Value {
     ByteString(Vec<u8>),
     Integer(i32),
@@ -38,35 +61,90 @@ pub enum Value {
     Dict(Vec<(Vec<u8>, Value)>)
 }
 
+use Value::*;
+
+impl<'a> From<&'a [u8]> for Result<Value, String> {
+    fn from(s: &'a [u8])->Self {
+        Ok(try!(parse(&mut s.iter().cloned())))
+    }
+}
+
+impl From<Value> for Vec<u8> {
+    fn from(v: Value)->Self {
+        v.into_bytes()
+    }
+}
+
+impl FromError<ParseResult> for String {
+    fn from_error(r: ParseResult)->Self {
+        format!("{:?}", r)
+    }
+}
+
+impl From<ParseResult> for String {
+    fn from(r: ParseResult)->Self {
+        format!("{:?}", r)
+    }
+}
+
+impl Value {
+    fn into_bytes(self)->Vec<u8> {
+        match self {
+            ByteString(v) => byte_string(&v),
+            Integer(v) => format!("i{}e", v).into_bytes(),
+            List(v) => {
+                let mut ret = Vec::new();
+                ret.push(b'l');
+                for i in v {
+                    ret.extend(i.into_bytes())
+                }
+                ret.push(b'e');
+                ret
+            },
+            Dict(v) => {
+                let mut ret = Vec::new();
+                ret.push(b'd');
+                for (k, v) in v {
+                    ret.extend(byte_string(&k));
+                    ret.extend(v.into_bytes())
+                }
+                ret.push(b'e');
+                ret
+            }
+        }
+    }
+}
 
 /// See <http://en.wikipedia.org/wiki/Bencode>
 pub fn parse(s: &mut Iterator<Item=u8>)->Result<Value, ParseResult> {
     if let Some(b) = s.next() {
         return Ok(match b as char {
-            'i' => Value::Integer(try!(parse_integer(s))),
-            'l' => Value::List(try!(parse_list(s))),
-            'd' => Value::Dict(try!(parse_dict(s))),
+            'i' => Integer(try!(parse_integer(s))),
+            'l' => List(try!(parse_list(s))),
+            'd' => Dict(try!(parse_dict(s))),
             'e' => return Err(Char(E)),
-            _ => Value::ByteString(try!(parse_byte_string(b, s)))
+            _ => ByteString(try!(parse_byte_string(b, s)))
         })
     }
     Err(Eof)
 }
 
 fn parse_byte_string(b: u8, s: &mut Iterator<Item=u8>)->Result<Vec<u8>, ParseResult> {
-    if b == '0' as u8 {
+    if b == b'0' {
         return match s.next() {
             None => Err(Eof),
             Some(COLON) => Ok(Vec::new()),
-            Some(x) => Err(Char(x))
+            Some(_) => Err(Char(b))
         }
+    }
+    else if b < b'0' || b > b'9' {
+        return Err(Char(b))
     }
     let mut len = b as u32 - '0' as u32;
     loop {
-        let c = s.next();
-        match c {
+        match s.next() {
             None => return Err(Eof),
-            Some(x) if x >= '0' as u8 && x <= '9' as u8 => {
+            Some(x) if x >= b'0' && x <= b'9' => {
                 len = len * 10 + (x as u32 - '0' as u32)
             },
             Some(COLON) => break,
@@ -99,7 +177,7 @@ fn parse_dict(s: &mut Iterator<Item=u8>)->Result<Vec<(Vec<u8>, Value)>, ParseRes
     let mut ret = Vec::new();
     loop {
         let k = match parse(s) {
-            Ok(Value::ByteString(v)) => v,
+            Ok(ByteString(v)) => v,
             Ok(v) => return Err(Val(v)),
             Err(Char(E)) => return Ok(ret),
             Err(err) => return Err(err)
@@ -110,8 +188,8 @@ fn parse_dict(s: &mut Iterator<Item=u8>)->Result<Vec<(Vec<u8>, Value)>, ParseRes
 }
 
 fn parse_integer(s: &mut Iterator<Item=u8>)->Result<i32, ParseResult> {
-    const ZERO: u8 = '0' as u8;
-    const MINUS: u8 = '-' as u8;
+    const ZERO: u8 = b'0';
+    const MINUS: u8 = b'-';
     let (mut ret, sign) = match s.next() {
         None => return Err(Eof),
         Some(ZERO) => return match s.next() {
@@ -120,7 +198,7 @@ fn parse_integer(s: &mut Iterator<Item=u8>)->Result<i32, ParseResult> {
             None => Err(Eof)
         },
         Some(MINUS) => (0, -1),
-        Some(x) if x > '0' as u8 && x <= '9' as u8 => {
+        Some(x) if x > b'0' && x <= b'9' => {
             (x as i32 - '0' as i32, 1)
         },
         Some(x) => return Err(Char(x))
@@ -129,7 +207,7 @@ fn parse_integer(s: &mut Iterator<Item=u8>)->Result<i32, ParseResult> {
         match s.next() {
             None => return Err(Eof),
             Some(E) => return Ok(sign * ret),
-            Some(x) if (x >= '0' as u8 && x <= '9' as u8) && !(ret == 0 && x == '0' as u8) => {
+            Some(x) if (x >= b'0' && x <= b'9') && !(ret == 0 && x == b'0') => {
                 ret = ret * 10 + x as i32 - '0' as i32
             },
             Some(x) => return Err(Char(x))
