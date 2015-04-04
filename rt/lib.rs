@@ -115,7 +115,7 @@ impl<T> Display for Val<T> where T: Vm, T::ByteCode: Display {
         }
         match self {
             &Nil => write!(f, "nil"),
-            &Macro(ref name) => write!(f, "`{}'", name),
+            &Macro(ref name) => write!(f, "@{}~", name),
             &Str(ref s) => write!(f, "{}", s),
             &If(..) => write!(f, "<if expression>"),
             &Lambda(ref byte_code) => write!(f, "`{}'", filter(&byte_code.to_string(), '\'')),
