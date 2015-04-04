@@ -1,5 +1,3 @@
-#![feature(convert, core)]
-
 use std::sync::mpsc::{Sender, Receiver};
 use std::fmt::{Formatter, Error, Display};
 
@@ -24,14 +22,6 @@ impl Display for Vm {
     }
 }
 
-
-
-impl From<String> for Result<Vm, String> {
-    fn from(s: String)->Self {
-        From::from(&*s)
-    }
-}
-
 impl From<Vm> for Vec<u8> {
     fn from(v: Vm)->Self {
         let mut ret = Vec::new();
@@ -51,26 +41,6 @@ impl From<Vm> for Vec<u8> {
     }
 }
 
-impl<'a> From<&'a str> for Result<Vm, String> {
-    fn from(s: &str)->Self {
-        let mut vec = Vec::new();
-        for c in s.chars() {
-            vec.push(match c {
-                '<' => ByteCode::Lt,
-                '>' => ByteCode::Gt,
-                '+' => ByteCode::Plus,
-                '-' => ByteCode::Minus,
-                '.' => ByteCode::Dot,
-                ',' => ByteCode::Comma,
-                '[' => ByteCode::LeftBracket,
-                ']' => ByteCode::RightBracket,
-                c => return Err(format!("unexpected character {}", c))
-            })
-        }
-        Ok(Vm(vec))
-    }
-}
-
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum ByteCode {
     Lt,
@@ -82,6 +52,47 @@ pub enum ByteCode {
     LeftBracket,
     RightBracket
 }
+
+pub enum Convert {
+    Ok(Vm),
+    Err(String)
+}
+
+impl From<Convert> for Result<Vm, String> {
+    fn from(v: Convert)->Self {
+        match v {
+            Convert::Ok(ok) => Ok(ok),
+            Convert::Err(s) => Err(s)
+        }
+    }
+}
+
+impl From<String> for Convert {
+    fn from(s: String)->Self {
+        From::from(&*s)
+    }
+}
+
+impl<'a> From<&'a str> for Convert {
+    fn from(s: &str)->Self {
+            let mut vec = Vec::new();
+            for c in s.chars() {
+                vec.push(match c {
+                    '<' => ByteCode::Lt,
+                    '>' => ByteCode::Gt,
+                    '+' => ByteCode::Plus,
+                    '-' => ByteCode::Minus,
+                    '.' => ByteCode::Dot,
+                    ',' => ByteCode::Comma,
+                    '[' => ByteCode::LeftBracket,
+                    ']' => ByteCode::RightBracket,
+                    c => return Convert::Err(format!("unexpected character {}", c))
+                })
+            }
+            Convert::Ok(Vm(vec))
+    }
+}
+
 
 impl Vm {
     pub fn print(s: &[u8])->Vm {

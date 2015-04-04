@@ -1,5 +1,3 @@
-#![feature(convert)]
-
 extern crate rt;
 use rt::*;
 use std::rc::Rc;
@@ -19,19 +17,30 @@ mod mock {
     #[derive(Debug, Clone)]
     pub struct Code;
 
+    pub struct Convert;
+
     impl Display for Code {
         fn fmt(&self, f: &mut Formatter)->Result<(), Error> {
             write!(f, "Code")
         }
     }
 
-    impl From<String> for Result<Code, String> {
+    impl From<String> for Convert {
         fn from(_: String)->Self {
+            Convert
+        }
+    }
+
+    impl From<Convert> for Result<Code, String> {
+        fn from(_: Convert)->Self {
             Ok(Code)
         }
     }
+
     impl ::rt::Vm for Vm {
         type ByteCode = Code;
+        type Convert = Convert;
+        type CompileFail = String;
         fn macro_expand<'a>(&mut self, _: &'a str)->Result<Code, ::rt::Signal> {
             Ok(Code)
         }

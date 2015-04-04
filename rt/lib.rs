@@ -1,4 +1,3 @@
-#![feature(convert)]
 
 /// example code here:
 /// ```rust
@@ -29,10 +28,11 @@
 ///
 use std::rc::Rc;
 use std::fmt::{Formatter, Error, Debug, Display};
-use std::error::FromError;
 
 pub trait Vm {
     type ByteCode;
+    type CompileFail;
+    type Convert;
     fn macro_expand<'a>(&mut self, &'a str)->Result<Self::ByteCode, Signal>;
     fn run(&mut self, &Self::ByteCode, &Vec<Val<Self>>)->Result<Val<Self>, String>;
 }
@@ -44,8 +44,8 @@ pub enum Signal {
     Quit
 }
 
-impl FromError<String> for Signal {
-    fn from_error(e: String)->Self {
+impl From<String> for Signal {
+    fn from(e: String)->Self {
         Signal::Fail(e)
     }
 }
@@ -191,13 +191,16 @@ impl<T> Val<T> where T: Vm, T::ByteCode: Display + Clone {
 }
 
 fn parse_lambda<T>(s: &mut Iterator<Item=char>)->Result<T::ByteCode, ParseResult>
-    where T: Vm, Result<T::ByteCode, String>: From<String> {
+    where T: Vm,
+    T::Convert: From<String>,
+    String: From<T::CompileFail>,
+    Result<T::ByteCode, T::CompileFail>: From<T::Convert> {
     match parse_str('\'', s) {
-        Ok(s) => match From::from(s) {
+        Ok(s) => match From::from(From::from(s)) {
             Ok(x) => Ok(x),
-            Err(err) => Err(Compile(err))
+            Err(err) => Err(Compile(From::from(err)))
         },
-        Err(err) => Err(err)
+        Err(err) => Err(From::from(err))
     }
 }
 
@@ -206,7 +209,10 @@ fn parse_macro(s: &mut Iterator<Item=char>)->Result<String, ParseResult> {
 }
 
 fn parse_list<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, ParseResult>
-    where T: Vm, Result<T::ByteCode, String>: From<String> {
+    where T: Vm,
+    T::Convert: From<String>,
+    String: From<T::CompileFail>,
+    Result<T::ByteCode, T::CompileFail>: From<T::Convert> {
     let first = match parse::<T>(s) {
         Ok(x) => x,
         Err(Char(')')) => return Ok(Nil),
@@ -223,7 +229,10 @@ fn parse_list<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, ParseResult>
 }
 
 pub fn parse<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, ParseResult>
-    where T: Vm, Result<T::ByteCode, String>: From<String> {
+    where T: Vm,
+    T::Convert: From<String>,
+    String: From<T::CompileFail>,
+    Result<T::ByteCode, T::CompileFail>: From<T::Convert> {
     match s.next() {
         None => Err(Eof),
         Some(' ') | Some('\t') | Some('\r') | Some('\n') => parse(s),
@@ -265,14 +274,19 @@ fn parse_str(delim: char, s: &mut Iterator<Item=char>)->Result<String, ParseResu
 }
 
 fn parse_if<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, ParseResult>
-    where T: Vm, Result<T::ByteCode, String>: From<String> {
+    where T: Vm,
+    T::Convert: From<String>,
+    String: From<T::CompileFail>,
+    Result<T::ByteCode, T::CompileFail>: From<T::Convert> {
     let (p, t, f) = (try!(parse(s)), try!(parse(s)), try!(parse(s)));
     Ok(If(Rc::new(p), Rc::new(t), Rc::new(f)))
 }
 
 pub fn repl<T>(vm: &mut T) where
     T: Vm,
-    Result<T::ByteCode, String>: From<String>,
+    T::Convert: From<String>,
+    String: From<T::CompileFail>,
+    Result<T::ByteCode, T::CompileFail>: From<T::Convert>,
     T::ByteCode: Display + Clone {
     use std::io::{stdin, stdout, Write};
     let mut history = String::new();

@@ -1,4 +1,4 @@
-#![feature(convert, collections)]
+#![feature(collections)]
 
 extern crate bf;
 extern crate rt;
@@ -44,6 +44,8 @@ impl Display for BfVm {
 
 impl rt::Vm for BfVm {
     type ByteCode = bf::Vm;
+    type CompileFail = String;
+    type Convert = bf::Convert;
     fn macro_expand<'a>(&mut self, id: &'a str)->Result<bf::Vm, rt::Signal> {
         let ret = match id {
             "greeting" => Ok(bf::Vm::print(&bencode::byte_string(b"hello, world"))),
@@ -119,7 +121,6 @@ impl rt::Vm for BfVm {
     }
 }
 
-#[cfg(not(test))]
 pub fn main() {
     rt::repl::<BfVm>(&mut Default::default());
 }

@@ -2,7 +2,6 @@
 #![feature(convert)]
 
 use std::fmt::{Debug, Formatter, Error};
-use std::error::FromError;
 
 const E: u8 = b'e';
 const COLON: u8 = b':';
@@ -63,21 +62,9 @@ pub enum Value {
 
 use Value::*;
 
-impl<'a> From<&'a [u8]> for Result<Value, String> {
-    fn from(s: &'a [u8])->Self {
-        Ok(try!(parse(&mut s.iter().cloned())))
-    }
-}
-
 impl From<Value> for Vec<u8> {
     fn from(v: Value)->Self {
         v.into_bytes()
-    }
-}
-
-impl FromError<ParseResult> for String {
-    fn from_error(r: ParseResult)->Self {
-        format!("{:?}", r)
     }
 }
 
