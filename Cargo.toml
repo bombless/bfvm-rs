@@ -11,6 +11,10 @@ path = "rt"
 [dependencies.bencode]
 path = "bencode"
 
+[lib]
+name = "repl"
+path = "main.rs"
+
 [[bin]]
 name = "repl"
 path = "main.rs"
