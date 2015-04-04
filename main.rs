@@ -18,20 +18,20 @@ impl Display for BfVm {
     fn fmt(&self, f: &mut Formatter)->Result<(), Error> {
         let cnt_macros = self.log_macros.len();
         if cnt_macros == 0 {
-            try!(write!(f, "no log for macros\n"));
+            try!(write!(f, "No log for macros.\n"));
         } else {
             try!(write!(f, "log for macros: ({} entries)\n", cnt_macros));
             for &(ref k, ref v) in &self.log_macros {
-                try!(write!(f, "!{}={}\n", k, v));
+                try!(write!(f, "!{}=`{}'\n", k, v));
             }
         }
         let cnt_calls = self.log_calls.len();
         if cnt_calls == 0 {
-            try!(write!(f, "no log for calls\n"));
+            try!(write!(f, "No log for calls.\n"));
         } else {
             try!(write!(f, "log for calls: ({} entries)\n", cnt_calls));
             for &(ref code, ref args, ref rslt) in &self.log_calls {
-                try!(write!(f, "`{:?}'\n", code.to_string()));
+                try!(write!(f, "`{}'\n", code));
                 for (idx, arg) in (1 ..).zip(args.iter()) {
                     try!(write!(f, "arg{}: {:?}\n", idx, arg.to_string()));
                 }
@@ -59,8 +59,8 @@ impl rt::Vm for BfVm {
                 Err(rt::Signal::Quit)
             },
             x => if let Ok(idx) = x.parse::<u8>() {
-                if let Some(entry) = self.log_macros.get(idx as usize) {
-                    println!("{:?}", entry)
+                if let Some(&(ref name, ref code)) = self.log_macros.get(idx as usize) {
+                    println!("!{}=`{}'", name, code)
                 } else {
                     println!("no macro access log entry for index {}", idx);
                     println!("type `(@log~)` for log overview")
@@ -68,8 +68,8 @@ impl rt::Vm for BfVm {
                 return Err(rt::Signal::Continue)
             } else if let (Some(&b'#'), Ok(idx)) =
                 (x.as_bytes().first(), x.chars().skip(1).collect::<String>().parse::<u8>()) {
-                if let Some(entry) = self.log_macros.get(idx as usize) {
-                    println!("{:?}", entry)
+                if let Some(&(ref code, ref args, ref rslt)) = self.log_calls.get(idx as usize) {
+                    println!("`{}'\nargs: {:?}\nresult: {:?}", code, args, rslt)
                 } else {
                     println!("no function call log entry for index #{}", idx);
                     println!("type `(@log~)` for log overview")
@@ -81,8 +81,7 @@ impl rt::Vm for BfVm {
             }
         };
         if let Ok(ref ok) = ret {
-            self.log_macros.push((id.to_string(), ok.clone()));
-            println!("{} entries for macro now", self.log_macros.len())
+            self.log_macros.push((id.to_string(), ok.clone()))
         }
         ret
     }
@@ -110,7 +109,6 @@ impl rt::Vm for BfVm {
                 self.log_calls.push((code.clone(),
                                      args.iter().map(From::from).collect(),
                                      utils::bencode2rt(s.clone())));
-                println!("{} entries for function call now", self.log_calls.len());
                 Ok(utils::bencode2rt(s))
             },
             Err(err) => {
