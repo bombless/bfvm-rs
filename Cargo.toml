@@ -16,5 +16,6 @@ name = "repl"
 path = "main.rs"
 
 [[bin]]
+doc = false
 name = "repl"
 path = "main.rs"
