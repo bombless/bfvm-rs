@@ -101,13 +101,24 @@ impl<T> Debug for Val<T> where T: Vm, T::ByteCode: Display {
 }
 
 impl<T> Display for Val<T> where T: Vm, T::ByteCode: Display {
-        fn fmt(&self, f: &mut Formatter)->Result<(), Error> {
+    fn fmt(&self, f: &mut Formatter)->Result<(), Error> {
+        fn filter(input: &str, delim: char)->String {
+            let mut ret = String::new();
+            for c in input.chars() {
+                if c == delim {
+                    ret.push_str(&format!("\\{}", c))
+                } else {
+                    ret.push(c)
+                }
+            }
+            ret
+        }
         match self {
             &Nil => write!(f, "nil"),
             &Macro(ref name) => write!(f, "`{}'", name),
             &Str(ref s) => write!(f, "{}", s),
             &If(..) => write!(f, "<if expression>"),
-            &Lambda(ref byte_code) => write!(f, "~{}", byte_code),
+            &Lambda(ref byte_code) => write!(f, "`{}'", filter(&byte_code.to_string(), '\'')),
             &Call(ref byte_code, ref args) => {
                 let mut print_args = String::new();
                 for i in args {

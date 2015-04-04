@@ -8,7 +8,19 @@ pub struct Vm(Vec<ByteCode>);
 
 impl Display for Vm {
     fn fmt(&self, f: &mut Formatter)->Result<(), Error> {
-        write!(f, "{:?}", self.0)
+        for bc in &self.0 {
+            try!(write!(f, "{}", match bc {
+                &ByteCode::Lt => '<',
+                &ByteCode::Gt => '>',
+                &ByteCode::Plus => '+',
+                &ByteCode::Minus => '-',
+                &ByteCode::Dot => '.',
+                &ByteCode::Comma => ',',
+                &ByteCode::LeftBracket => '[',
+                &ByteCode::RightBracket => ']'
+            }));
+        }
+        Ok(())
     }
 }
 
