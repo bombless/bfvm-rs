@@ -46,8 +46,7 @@ impl rt::Vm for BfVm {
     type ByteCode = bf::Vm;
     fn macro_expand<'a>(&mut self, id: &'a str)->Result<bf::Vm, rt::Signal> {
         let ret = match id {
-            "greeting" => Ok(try!(From::from(
-                "++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++."))),
+            "greeting" => Ok(bf::Vm::print(&bencode::byte_string(b"hello, world"))),
             "A" => Ok(bf::Vm::print(b"1:A")),
             "log" => {
                 let log = self.to_string();
@@ -122,7 +121,8 @@ impl rt::Vm for BfVm {
     }
 }
 
-fn main() {
+#[cfg(not(test))]
+pub fn main() {
     rt::repl::<BfVm>(&mut Default::default());
 }
 
