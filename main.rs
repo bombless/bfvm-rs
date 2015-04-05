@@ -79,7 +79,11 @@ impl rt::Vm for BfVm {
                 }
                 return Macro::Continue
             } else {
-                return Macro::Err(format!("failed to expand macro `{:?}`", id))
+                let mut pretty = String::new();
+                for c in id.chars() {
+                    pretty.extend(c.escape_default())
+                }
+                return Macro::Err(format!("failed to expand macro `{}`", pretty))
             }
         };
         if let Macro::Ok(ref ok) = ret {
