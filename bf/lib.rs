@@ -6,17 +6,8 @@ pub struct Vm(Vec<ByteCode>);
 
 impl Display for Vm {
     fn fmt(&self, f: &mut Formatter)->Result<(), Error> {
-        for bc in &self.0 {
-            try!(write!(f, "{}", match bc {
-                &ByteCode::Lt => '<',
-                &ByteCode::Gt => '>',
-                &ByteCode::Plus => '+',
-                &ByteCode::Minus => '-',
-                &ByteCode::Dot => '.',
-                &ByteCode::Comma => ',',
-                &ByteCode::LeftBracket => '[',
-                &ByteCode::RightBracket => ']'
-            }));
+        for &c in &self.0 {
+            try!(write!(f, "{}", c as u8 as char))
         }
         Ok(())
     }
@@ -24,33 +15,21 @@ impl Display for Vm {
 
 impl From<Vm> for Vec<u8> {
     fn from(v: Vm)->Self {
-        let mut ret = Vec::new();
-        for i in v.0 {
-            ret.push(match i {
-                ByteCode::Lt => b'<',
-                ByteCode::Gt => b'>',
-                ByteCode::Plus => b'+',
-                ByteCode::Minus => b'-',
-                ByteCode::Dot => b'.',
-                ByteCode::Comma => b',',
-                ByteCode::LeftBracket => b'[',
-                ByteCode::RightBracket => b']'
-            })
-        }
-        ret
+        v.0.into_iter().map(|x| x as u8).collect()
     }
 }
 
+#[repr(u8)]
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum ByteCode {
-    Lt,
-    Gt,
-    Plus,
-    Minus,
-    Dot,
-    Comma,
-    LeftBracket,
-    RightBracket
+    Lt = b'<',
+    Gt = b'>',
+    Plus = b'+',
+    Minus = b'-',
+    Dot = b'.',
+    Comma = b',',
+    LeftBracket = b'[',
+    RightBracket = b']'
 }
 
 pub enum Convert {
