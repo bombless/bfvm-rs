@@ -1,5 +1,6 @@
 use std::rc::Rc;
-use std::fmt::{Formatter, Error, Debug, Display};
+use std::fmt::{Formatter, Debug, Display};
+use std::fmt::Error as FmtError;
 
 pub trait Vm: {
     type ByteCode;
@@ -58,13 +59,13 @@ impl<'a, T> From<&'a Val<T>> for Val<T> where T: Vm, T::ByteCode: Clone {
 }
 
 impl<T> Debug for Val<T> where T: Vm, T::ByteCode: Display {
-    fn fmt(&self, f: &mut Formatter)->Result<(), Error> {
+    fn fmt(&self, f: &mut Formatter)->Result<(), FmtError> {
         write!(f, "{:?}",  self.to_string())
     }
 }
 
 impl<T> Display for Val<T> where T: Vm, T::ByteCode: Display {
-    fn fmt(&self, f: &mut Formatter)->Result<(), Error> {
+    fn fmt(&self, f: &mut Formatter)->Result<(), FmtError> {
         fn filter(input: &str, delim: char)->String {
             let mut ret = String::new();
             for c in input.chars() {
@@ -93,18 +94,20 @@ impl<T> Display for Val<T> where T: Vm, T::ByteCode: Display {
     }
 }
 
-pub enum ParseError {
+pub enum Error {
     Char(char),
     Compile(String),
     Eof
 }
-use ParseError::*;
+use Error::Char as UnexpectedChar;
+use Error::Compile as CompileError;
+use Error::Eof;
 
-impl Debug for ParseError {
-    fn fmt(&self, f: &mut Formatter)->Result<(), Error> {
+impl Debug for Error {
+    fn fmt(&self, f: &mut Formatter)->Result<(), FmtError> {
         match self {
-            &Compile(ref s) => write!(f, "failed to compile: {}", s),
-            &Char(c) => write!(f,
+            &CompileError(ref s) => write!(f, "failed to compile: {}", s),
+            &UnexpectedChar(c) => write!(f,
                                "unexpected character `{}`",
                                c.escape_default().collect::<String>()),
             &Eof => write!(f, "unexpectly terminated")
@@ -178,45 +181,46 @@ impl<T> Val<T> where T: Vm, T::ByteCode: Display + Clone {
     }
 }
 
-fn parse_lambda<T>(s: &mut Iterator<Item=char>)->Result<T::ByteCode, ParseError>
+fn parse_lambda<T>(s: &mut Iterator<Item=char>)->Result<T::ByteCode, Error>
     where T: Vm,
     T::Convert: From<String>,
     String: From<T::CompileFail>,
     Result<T::ByteCode, T::CompileFail>: From<T::Convert> {
     match parse_str('\'', s) {
+        // compile to VM byte code *now*, since we don't do lazy execution
         Ok(s) => match <Result<_, _>>::from(T::Convert::from(s)) {
             Ok(x) => Ok(x),
-            Err(err) => Err(Compile(String::from(err)))
+            Err(err) => Err(CompileError(String::from(err)))
         },
-        Err(err) => Err(ParseError::from(err))
+        Err(err) => Err(Error::from(err))
     }
 }
 
-fn parse_macro(s: &mut Iterator<Item=char>)->Result<String, ParseError> {
+fn parse_macro(s: &mut Iterator<Item=char>)->Result<String, Error> {
     parse_str('~', s)
 }
 
-fn parse_list<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, ParseError>
+fn parse_list<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, Error>
     where T: Vm,
     T::Convert: From<String>,
     String: From<T::CompileFail>,
     Result<T::ByteCode, T::CompileFail>: From<T::Convert> {
     let first = match parse::<T>(s) {
         Ok(x) => x,
-        Err(Char(')')) => return Ok(Nil),
+        Err(UnexpectedChar(')')) => return Ok(Nil),
         Err(err) => return Err(err)
     };
     let mut ret = Vec::new();
     loop {
         match parse(s) {
             Ok(v) => ret.push(v),
-            Err(Char(')')) => return Ok(Call(Rc::new(first), ret)),
+            Err(UnexpectedChar(')')) => return Ok(Call(Rc::new(first), ret)),
             Err(err) => return Err(err)
         }
     }
 }
 
-pub fn parse<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, ParseError>
+pub fn parse<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, Error>
     where T: Vm,
     T::Convert: From<String>,
     String: From<T::CompileFail>,
@@ -229,11 +233,11 @@ pub fn parse<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, ParseError>
         Some('`') => Ok(Lambda(try!(parse_lambda::<T>(s)))),
         Some('(') => parse_list(s),
         Some('@') => Ok(Macro(try!(parse_macro(s)))),
-        Some(x) => Err(Char(x)),
+        Some(x) => Err(UnexpectedChar(x)),
     }
 }
 
-fn parse_str(delim: char, s: &mut Iterator<Item=char>)->Result<String, ParseError> {
+fn parse_str(delim: char, s: &mut Iterator<Item=char>)->Result<String, Error> {
     let mut escape = false;
     let mut ret = String::new();
     while let Some(c) = s.next() {
@@ -250,7 +254,7 @@ fn parse_str(delim: char, s: &mut Iterator<Item=char>)->Result<String, ParseErro
                 '"' => '"',
                 '\\' => '\\',
                 c if c == delim => delim,
-                _ => return Err(Char(c))
+                _ => return Err(UnexpectedChar(c))
             })
         } else if c == '\\' {
             escape = true
@@ -261,7 +265,7 @@ fn parse_str(delim: char, s: &mut Iterator<Item=char>)->Result<String, ParseErro
     Err(Eof)
 }
 
-fn parse_if<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, ParseError>
+fn parse_if<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, Error>
     where T: Vm,
     T::Convert: From<String>,
     String: From<T::CompileFail>,
@@ -312,15 +316,15 @@ pub fn repl<T>(vm: &mut T) where
                     continue
                 }
             },
-            Err(Char(c)) => {
+            Err(UnexpectedChar(c)) => {
                 println!("failed to parse expression: unexpected `{}`",
                          c.escape_default().collect::<String>());
                 stdout().flush().unwrap();
                 stdout().write(b"\n").unwrap();
                 stdout().flush().unwrap()
             },
-            Err(Compile(err)) => {
-                println!("compile error: {}", err);
+            Err(CompileError(err)) => {
+                println!("illegal lambda literal: {}", err);
             }
         }
         stdout().write(b">").unwrap();
