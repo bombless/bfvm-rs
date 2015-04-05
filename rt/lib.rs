@@ -80,7 +80,13 @@ impl<T> Display for Val<T> where T: Vm, T::ByteCode: Display {
         match self {
             &Nil => write!(f, "nil"),
             &Macro(ref name) => write!(f, "@{}~", name),
-            &Str(ref s) => write!(f, "{}", s),
+            &Str(ref s) => {
+                let mut fmt = String::new();
+                for c in s.chars() {
+                    fmt.extend(char::escape_default(c))
+                }
+                write!(f, "{}", fmt)
+            }
             &If(..) => write!(f, "<if expression>"),
             &Lambda(ref byte_code) => write!(f, "`{}'", filter(&byte_code.to_string(), '\'')),
             &Call(ref byte_code, ref args) => {
