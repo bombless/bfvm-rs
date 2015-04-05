@@ -117,7 +117,7 @@ fn parse_byte_string(b: u8, s: &mut Iterator<Item=u8>)->Result<Vec<u8>, ParseRes
     if b == b'0' {
         return match s.next() {
             None => Err(Eof),
-            Some(b';') => Ok(Vec::new()),
+            Some(b':') => Ok(Vec::new()),
             Some(_) => Err(Char(b))
         }
     }
