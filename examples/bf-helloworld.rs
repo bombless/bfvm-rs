@@ -8,10 +8,10 @@ use std::thread::spawn;
 fn main() {
     let (_, input) = channel();
     let (output, data) = channel();
-    let conv = <Convert as From<_>>::from("++++++++++[>+++++++>++++++++++>+++>+<<<<-]\
+    let conv = Convert::from("++++++++++[>+++++++>++++++++++>+++>+<<<<-]\
         >++.>+.+++++++..+++.>++.<<+++++++++++++++.\
         >.+++.------.--------.>+.>.");
-    let vm = <Result<bf::Vm, String> as From<_>>::from(conv).unwrap();
+    let vm = <Result<_, _>>::from(conv).unwrap();
     spawn(move || {
         vm.run(output, input).unwrap();
     });

@@ -96,7 +96,7 @@ impl rt::Vm for BfVm {
         let (arg_stream, input) = channel();
         arg_stream.send(b'l').unwrap();
         for i in args {
-            for b in utils::rt2bencode(From::from(i)) {
+            for b in utils::rt2bencode(rt::Val::from(i)) {
                 arg_stream.send(b).unwrap()
             }
         }
@@ -113,7 +113,7 @@ impl rt::Vm for BfVm {
         match bencode::parse(&mut ret.iter().cloned()) {
             Ok(s) => {
                 self.log_calls.push((code.clone(),
-                                     args.iter().map(From::from).collect(),
+                                     args.iter().map(rt::Val::from).collect(),
                                      utils::bencode2rt(s.clone())));
                 Ok(utils::bencode2rt(s))
             },

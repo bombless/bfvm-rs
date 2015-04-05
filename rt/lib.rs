@@ -49,7 +49,7 @@ impl<'a, T> From<&'a Val<T>> for Val<T> where T: Vm, T::ByteCode: Clone {
             &If(ref p, ref t, ref f) => If(p.clone(), t.clone(), f.clone()),
             &Lambda(ref bc) => Lambda(bc.clone()),
             &Call(ref first, ref args) => Call(first.clone(), {
-                args.iter().map(From::from).collect()
+                args.iter().map(Val::from).collect()
             }),
             &Macro(ref s) => Macro(s.clone()),
             &Nil => Nil
@@ -140,7 +140,7 @@ impl<T> CalcResult<T> {
 impl<T> Val<T> where T: Vm, T::ByteCode: Display + Clone {
     fn calc(&self, vm: &mut T)->CalcResult<Val<T>> {
         match self {
-            &Nil | &Lambda(_) | &Str(_) => Calc::Ok(From::from(self)),
+            &Nil | &Lambda(_) | &Str(_) => Calc::Ok(Val::from(self)),
             &Macro(ref name) => match vm.macro_expand(name) {
                 MacroResult::Ok(x) => Calc::Ok(Lambda(x)),
                 MacroResult::Err(err) => Calc::Err(err),
@@ -184,11 +184,11 @@ fn parse_lambda<T>(s: &mut Iterator<Item=char>)->Result<T::ByteCode, ParseError>
     String: From<T::CompileFail>,
     Result<T::ByteCode, T::CompileFail>: From<T::Convert> {
     match parse_str('\'', s) {
-        Ok(s) => match From::from(From::from(s)) {
+        Ok(s) => match <Result<_, _>>::from(T::Convert::from(s)) {
             Ok(x) => Ok(x),
-            Err(err) => Err(Compile(From::from(err)))
+            Err(err) => Err(Compile(String::from(err)))
         },
-        Err(err) => Err(From::from(err))
+        Err(err) => Err(ParseError::from(err))
     }
 }
 

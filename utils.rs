@@ -24,16 +24,16 @@ pub fn rt2bencode<T>(v: RtVal<T>)->Vec<u8>
         RtVal::Str(s) => byte_string(s.as_bytes()),
         RtVal::If(p, t, f) => {
             let mut ret = vec![ b'l' ];
-            ret.extend(rt2bencode(From::from(p)));
-            ret.extend(rt2bencode(From::from(t)));
-            ret.extend(rt2bencode(From::from(f)));
+            ret.extend(rt2bencode(RtVal::from(p)));
+            ret.extend(rt2bencode(RtVal::from(t)));
+            ret.extend(rt2bencode(RtVal::from(f)));
             ret.push(b'e');
             object("if", &ret)
         },
-        RtVal::Lambda(code) => From::from(code),
+        RtVal::Lambda(code) => <Vec<_>>::from(code),
         RtVal::Call(fst, args) => {
             let mut ret = vec![ b'l' ];
-            ret.extend(rt2bencode(From::from(fst)));
+            ret.extend(rt2bencode(RtVal::from(fst)));
             for i in args {
                 ret.extend(rt2bencode(i));
             }
