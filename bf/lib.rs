@@ -65,7 +65,7 @@ impl<'a> From<&'a str> for Convert {
                     ',' => ByteCode::Comma,
                     '[' => ByteCode::LeftBracket,
                     ']' => ByteCode::RightBracket,
-                    c => return Convert::Err(format!("unexpected character {}", c))
+                    c => return Convert::Err(format!("unexpected character `{}`", c))
                 })
             }
             Convert::Ok(Vm(vec))
