@@ -139,6 +139,7 @@ impl<T> Val<T> where T: Vm, T::ByteCode: Display + Clone {
             &Nil | &Lambda(_) | &Str(_) => Ok(From::from(self)),
             &Macro(ref name) => match vm.macro_expand(name) {
                 Ok(x) => Ok(Lambda(x)),
+                Err(Signal::Continue) => Ok(Nil),
                 Err(err) => Err(Sgl(err))
             },
             &Call(ref first, ref tail) => {
