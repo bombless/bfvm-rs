@@ -3,6 +3,11 @@ fn test_basic_lambda() {
     assert_eq!(super::parse_lambda::<Vm>(&mut "'".chars()).unwrap(), "")
 }
 
+#[test]
+fn test_branches() {
+    let vm = super::parse(&mut " ? () 'a' 'b' ".chars()).unwrap();
+    assert_eq!(vm.calc(&mut Vm).unwrap().to_string(), r##"b"##)
+}
 
 struct Vm;
 impl super::Vm for Vm {

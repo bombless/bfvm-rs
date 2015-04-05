@@ -154,6 +154,7 @@ impl Debug for ParseResult {
     }
 }
 
+#[derive(Debug)]
 enum CalcResult {
     Msg(String),
     Sgl(Signal)
