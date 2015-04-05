@@ -107,14 +107,14 @@ impl<T> Display for Val<T> where T: Vm, T::ByteCode: Display {
     }
 }
 
-pub enum ParseResult {
+pub enum ParseError {
     Char(char),
     Compile(String),
     Eof
 }
-use ParseResult::*;
+use ParseError::*;
 
-impl Debug for ParseResult {
+impl Debug for ParseError {
     fn fmt(&self, f: &mut Formatter)->Result<(), Error> {
         match self {
             &Compile(ref s) => write!(f, "failed to compile: {}", s),
@@ -169,7 +169,7 @@ impl<T> Val<T> where T: Vm, T::ByteCode: Display + Clone {
     }
 }
 
-fn parse_lambda<T>(s: &mut Iterator<Item=char>)->Result<T::ByteCode, ParseResult>
+fn parse_lambda<T>(s: &mut Iterator<Item=char>)->Result<T::ByteCode, ParseError>
     where T: Vm,
     T::Convert: From<String>,
     String: From<T::CompileFail>,
@@ -183,11 +183,11 @@ fn parse_lambda<T>(s: &mut Iterator<Item=char>)->Result<T::ByteCode, ParseResult
     }
 }
 
-fn parse_macro(s: &mut Iterator<Item=char>)->Result<String, ParseResult> {
+fn parse_macro(s: &mut Iterator<Item=char>)->Result<String, ParseError> {
     parse_str('~', s)
 }
 
-fn parse_list<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, ParseResult>
+fn parse_list<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, ParseError>
     where T: Vm,
     T::Convert: From<String>,
     String: From<T::CompileFail>,
@@ -207,7 +207,7 @@ fn parse_list<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, ParseResult>
     }
 }
 
-pub fn parse<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, ParseResult>
+pub fn parse<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, ParseError>
     where T: Vm,
     T::Convert: From<String>,
     String: From<T::CompileFail>,
@@ -224,7 +224,7 @@ pub fn parse<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, ParseResult>
     }
 }
 
-fn parse_str(delim: char, s: &mut Iterator<Item=char>)->Result<String, ParseResult> {
+fn parse_str(delim: char, s: &mut Iterator<Item=char>)->Result<String, ParseError> {
     let mut escape = false;
     let mut ret = String::new();
     while let Some(c) = s.next() {
@@ -252,7 +252,7 @@ fn parse_str(delim: char, s: &mut Iterator<Item=char>)->Result<String, ParseResu
     Err(Eof)
 }
 
-fn parse_if<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, ParseResult>
+fn parse_if<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, ParseError>
     where T: Vm,
     T::Convert: From<String>,
     String: From<T::CompileFail>,

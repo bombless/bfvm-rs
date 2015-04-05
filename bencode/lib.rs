@@ -21,33 +21,33 @@ pub fn byte_string(s: &[u8])->Vec<u8> {
     ret
 }
 
-pub enum ParseResult {
+pub enum ParseError {
     Char(u8),
     Val(Value),
     Eof
 }
 
-impl Debug for ParseResult {
+impl Debug for ParseError {
     fn fmt(&self, f: &mut Formatter)->Result<(), Error> {
         match self {
-            &ParseResult::Char(ref c) => {
+            &ParseError::Char(ref c) => {
                 let fmt = match std::char::from_u32(*c as u32) {
                     Some(x) => x.escape_default().collect(),
                     None => format!("0x{:02X}", c)
                 };
                 write!(f, "unexpected character `{}`", fmt)
             },
-            &ParseResult::Val(ref v) => {
+            &ParseError::Val(ref v) => {
                 write!(f, "unexpected value {:?}", v)
             },
-            &ParseResult::Eof => {
+            &ParseError::Eof => {
                 write!(f, "unexpected EOF")
             },
         }
     }
 }
 
-use ParseResult::*;
+use ParseError::*;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Value {
@@ -65,8 +65,8 @@ impl From<Value> for Vec<u8> {
     }
 }
 
-impl From<ParseResult> for String {
-    fn from(r: ParseResult)->Self {
+impl From<ParseError> for String {
+    fn from(r: ParseError)->Self {
         format!("{:?}", r)
     }
 }
@@ -100,7 +100,7 @@ impl Value {
 }
 
 /// See <http://en.wikipedia.org/wiki/Bencode>
-pub fn parse(s: &mut Iterator<Item=u8>)->Result<Value, ParseResult> {
+pub fn parse(s: &mut Iterator<Item=u8>)->Result<Value, ParseError> {
     if let Some(b) = s.next() {
         return Ok(match b as char {
             'i' => Integer(try!(parse_integer(s))),
@@ -113,7 +113,7 @@ pub fn parse(s: &mut Iterator<Item=u8>)->Result<Value, ParseResult> {
     Err(Eof)
 }
 
-fn parse_byte_string(b: u8, s: &mut Iterator<Item=u8>)->Result<Vec<u8>, ParseResult> {
+fn parse_byte_string(b: u8, s: &mut Iterator<Item=u8>)->Result<Vec<u8>, ParseError> {
     if b == b'0' {
         return match s.next() {
             None => Err(Eof),
@@ -146,7 +146,7 @@ fn parse_byte_string(b: u8, s: &mut Iterator<Item=u8>)->Result<Vec<u8>, ParseRes
     Ok(ret)
 }
 
-fn parse_list(s: &mut Iterator<Item=u8>)->Result<Vec<Value>, ParseResult> {
+fn parse_list(s: &mut Iterator<Item=u8>)->Result<Vec<Value>, ParseError> {
     let mut ret = Vec::new();
     loop {
         match parse(s) {
@@ -157,7 +157,7 @@ fn parse_list(s: &mut Iterator<Item=u8>)->Result<Vec<Value>, ParseResult> {
     }
 }
 
-fn parse_dict(s: &mut Iterator<Item=u8>)->Result<Vec<(Vec<u8>, Value)>, ParseResult> {
+fn parse_dict(s: &mut Iterator<Item=u8>)->Result<Vec<(Vec<u8>, Value)>, ParseError> {
     let mut ret = Vec::new();
     loop {
         let k = match parse(s) {
@@ -171,7 +171,7 @@ fn parse_dict(s: &mut Iterator<Item=u8>)->Result<Vec<(Vec<u8>, Value)>, ParseRes
     }
 }
 
-fn parse_integer(s: &mut Iterator<Item=u8>)->Result<i32, ParseResult> {
+fn parse_integer(s: &mut Iterator<Item=u8>)->Result<i32, ParseError> {
     let (mut ret, sign) = match s.next() {
         None => return Err(Eof),
         Some(b'0') => return match s.next() {
