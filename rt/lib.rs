@@ -97,15 +97,17 @@ impl<T> Display for Val<T> where T: Vm, T::ByteCode: Display {
 pub enum Error {
     Char(char),
     Compile(String),
-    Eof
+    Eof,
+    Nothing
 }
 use Error::Char as UnexpectedChar;
 use Error::Compile as CompileError;
-use Error::Eof;
+use Error::{Eof, Nothing};
 
 impl Debug for Error {
     fn fmt(&self, f: &mut Formatter)->Result<(), FmtError> {
         match self {
+            &Nothing => write!(f, "nothing to parse"),
             &CompileError(ref s) => write!(f, "failed to compile: {}", s),
             &UnexpectedChar(c) => write!(f,
                                "unexpected character `{}`",
@@ -181,6 +183,13 @@ impl<T> Val<T> where T: Vm, T::ByteCode: Display + Clone {
     }
 }
 
+fn is_whitespace(c: char)->bool {
+    match c {
+        '\t' | '\r' | '\n' | ' ' => true,
+        _ => false
+    }
+}
+
 fn parse_lambda<T>(s: &mut Iterator<Item=char>)->Result<T::ByteCode, Error>
     where T: Vm,
     T::Convert: From<String>,
@@ -226,8 +235,8 @@ pub fn parse<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, Error>
     String: From<T::CompileFail>,
     Result<T::ByteCode, T::CompileFail>: From<T::Convert> {
     match s.next() {
-        None => Err(Eof),
-        Some(' ') | Some('\t') | Some('\r') | Some('\n') => parse(s),
+        None => Err(Nothing),
+        Some(c) if is_whitespace(c) => parse(s),
         Some(x) if x == '\'' || x == '"' => Ok(Str(try!(parse_str(x, s)))),
         Some('?') => Ok(try!(parse_if(s))),
         Some('`') => Ok(Lambda(try!(parse_lambda::<T>(s)))),
@@ -285,21 +294,15 @@ pub fn repl<T>(vm: &mut T) where
     stdout().write(b">").unwrap();
     stdout().flush().unwrap();
     loop {
-        if !history.is_empty() {
-            stdout().write(b"> ... ").unwrap();
-            stdout().flush().unwrap();
-        }
         let mut line = String::new();
         stdin().read_line(&mut line).unwrap();
         let mut buf = history.clone();
         buf.push_str(&line);
         let s = &mut buf.chars();
         match parse::<T>(s) {
+            Err(Nothing) => { /* nothing parsed, fine, just go to next loop */ },
             Ok(ref x) => {
-                let unexpected = s.find(|&x| match x {
-                    '\t' | '\r' | '\n' | ' ' => false,
-                    _ => true
-                });
+                let unexpected = s.find(|&x| !is_whitespace(x));
                 if let Some(c) = unexpected {
                     println!("error: unexpected `{}`", c.escape_default().collect::<String>());
                 } else {
@@ -311,10 +314,11 @@ pub fn repl<T>(vm: &mut T) where
                 }
             },
             Err(Eof) => {
-                if !buf.chars().all(char::is_whitespace) {
-                    history = buf.clone();
-                    continue
-                }
+                // missing closing delim here, we copy the buffer to wait for incoming characters
+                history = buf.clone();
+                stdout().write(b"> ... ").unwrap();
+                stdout().flush().unwrap();
+                continue
             },
             Err(UnexpectedChar(c)) => {
                 println!("failed to parse expression: unexpected `{}`",
