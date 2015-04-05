@@ -1,5 +1,3 @@
-#![feature(collections)]
-
 extern crate bf;
 extern crate rt;
 extern crate bencode;
@@ -78,8 +76,7 @@ impl rt::Vm for BfVm {
                 }
                 return Err(rt::Signal::Continue)
             } else {
-                return Err(rt::Signal::Fail(format!("failed to expand macro `{}`",
-                                                    id.escape_default())))
+                return Err(rt::Signal::Fail(format!("failed to expand macro `{:?}`", id)))
             }
         };
         if let Ok(ref ok) = ret {
