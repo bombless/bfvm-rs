@@ -223,6 +223,7 @@ fn parse_list<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, Error>
     let first = match parse::<T>(s) {
         Ok(x) => x,
         Err(UnexpectedChar(')')) => return Ok(Nil),
+        Err(Nothing) => return Err(Eof),
         Err(err) => return Err(err)
     };
     let mut ret = Vec::new();
@@ -230,6 +231,7 @@ fn parse_list<T>(s: &mut Iterator<Item=char>)->Result<Val<T>, Error>
         match parse(s) {
             Ok(v) => ret.push(v),
             Err(UnexpectedChar(')')) => return Ok(Call(Rc::new(first), ret)),
+            Err(Nothing) => return Err(Eof),
             Err(err) => return Err(err)
         }
     }
@@ -296,19 +298,24 @@ pub fn repl<T>(vm: &mut T) where
     Result<T::ByteCode, T::CompileFail>: From<T::Convert>,
     T::ByteCode: Display + Clone {
     use std::io::{stdin, stdout, Write};
-    let mut history = String::new();
-    stdout().write(b">").unwrap();
-    stdout().flush().unwrap();
+    let mut line = String::new();
+    let mut continue_ = false;
     loop {
-        let mut line = String::new();
+        if continue_ {
+            stdout().write(b"> ... ").unwrap();
+            stdout().flush().unwrap();
+            continue_ = false
+        } else {
+            line.clear();
+            stdout().write(b">").unwrap();
+            stdout().flush().unwrap()
+        }
         stdin().read_line(&mut line).unwrap();
-        let mut buf = history.clone();
-        buf.push_str(&line);
-        let s = &mut buf.chars();
-        match parse::<T>(s) {
+        let mut char_reader = line.chars();
+        match parse::<T>(&mut char_reader) {
             Err(Nothing) => { /* nothing parsed, fine, just go to next loop */ },
             Ok(ref x) => {
-                let unexpected = s.find(|&x| !is_whitespace(x));
+                let unexpected = char_reader.find(|&x| !is_whitespace(x));
                 if let Some(c) = unexpected {
                     println!("error: unexpected `{}`", c.escape_default().collect::<String>());
                 } else {
@@ -321,10 +328,7 @@ pub fn repl<T>(vm: &mut T) where
             },
             Err(Eof) => {
                 // missing closing delim here, we copy the buffer to wait for incoming characters
-                history = buf.clone();
-                stdout().write(b"> ... ").unwrap();
-                stdout().flush().unwrap();
-                continue
+                continue_ = true
             },
             Err(UnexpectedChar(c)) => {
                 println!("failed to parse expression: unexpected `{}`",
@@ -337,9 +341,6 @@ pub fn repl<T>(vm: &mut T) where
                 println!("illegal lambda literal: {}", err);
             }
         }
-        stdout().write(b">").unwrap();
-        stdout().flush().unwrap();
-        history.clear()
     }
 }
 
