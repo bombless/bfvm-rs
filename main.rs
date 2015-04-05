@@ -5,6 +5,9 @@ extern crate bencode;
 use std::sync::mpsc::channel;
 use std::default::Default;
 use std::fmt::{Formatter, Error, Display};
+use rt::MacroResult;
+use rt::MacroResult as Macro;
+
 
 #[derive(Default)]
 struct BfVm {
@@ -44,19 +47,19 @@ impl rt::Vm for BfVm {
     type ByteCode = bf::Vm;
     type CompileFail = String;
     type Convert = bf::Convert;
-    fn macro_expand<'a>(&mut self, id: &'a str)->Result<bf::Vm, rt::Signal> {
+    fn macro_expand<'a>(&mut self, id: &'a str)->MacroResult<bf::Vm> {
         let ret = match id {
-            "greeting" => Ok(bf::Vm::print(&bencode::byte_string(b"hello, world"))),
-            "A" => Ok(bf::Vm::print(b"1:A")),
+            "greeting" => Macro::Ok(bf::Vm::print(&bencode::byte_string(b"hello, world"))),
+            "A" => Macro::Ok(bf::Vm::print(b"1:A")),
             "log" => {
                 let log = self.to_string();
-                Ok(bf::Vm::print(&bencode::byte_string(log.as_bytes())))
+                Macro::Ok(bf::Vm::print(&bencode::byte_string(log.as_bytes())))
             },
             "help" => {
-                Err(rt::Signal::Continue)
+                Macro::Continue
             }
             "quit" => {
-                Err(rt::Signal::Quit)
+                Macro::Quit
             },
             x => if let Ok(idx) = x.parse::<u8>() {
                 if let Some(&(ref name, ref code)) = self.log_macros.get(idx as usize) {
@@ -65,7 +68,7 @@ impl rt::Vm for BfVm {
                     println!("no macro access log entry for index {}", idx);
                     println!("type `(@log~)` for log overview")
                 }
-                return Err(rt::Signal::Continue)
+                return Macro::Continue
             } else if let (Some(&b'#'), Ok(idx)) =
                 (x.as_bytes().first(), x.chars().skip(1).collect::<String>().parse::<u8>()) {
                 if let Some(&(ref code, ref args, ref rslt)) = self.log_calls.get(idx as usize) {
@@ -74,12 +77,12 @@ impl rt::Vm for BfVm {
                     println!("no function call log entry for index #{}", idx);
                     println!("type `(@log~)` for log overview")
                 }
-                return Err(rt::Signal::Continue)
+                return Macro::Continue
             } else {
-                return Err(rt::Signal::Fail(format!("failed to expand macro `{:?}`", id)))
+                return Macro::Err(format!("failed to expand macro `{:?}`", id))
             }
         };
-        if let Ok(ref ok) = ret {
+        if let Macro::Ok(ref ok) = ret {
             self.log_macros.push((id.to_string(), ok.clone()))
         }
         ret

@@ -5,25 +5,11 @@ pub trait Vm: {
     type ByteCode;
     type CompileFail;
     type Convert;
-    fn macro_expand<'a>(&mut self, _: &'a str)->Result<Self::ByteCode, Signal> {
-        Err(Signal::Smoke)
+    fn macro_expand<'a>(&mut self, _: &'a str)->MacroResult<Self::ByteCode> {
+        MacroResult::Err("method `macro_expand` not implemented".to_string())
     }
     fn run(&mut self, _: &Self::ByteCode, _: &Vec<Val<Self>>)->Result<Val<Self>, String> {
             Err("method `run` not implemented".to_string())
-    }
-}
-
-#[derive(PartialEq, Eq, Debug)]
-pub enum Signal {
-    Fail(String),
-    Smoke,
-    Continue,
-    Quit
-}
-
-impl From<String> for Signal {
-    fn from(e: String)->Self {
-        Signal::Fail(e)
     }
 }
 
@@ -126,44 +112,67 @@ impl Debug for ParseError {
     }
 }
 
-#[derive(Debug)]
-enum CalcResult {
-    Msg(String),
-    Sgl(Signal)
+enum CalcResult<T> {
+    Ok(T),
+    Err(String),
+    Quit
 }
-use CalcResult::*;
+use CalcResult as Calc;
+
+pub enum MacroResult<T> {
+    Ok(T),
+    Err(String),
+    Continue,
+    Quit
+}
+
+#[cfg(test)]
+impl<T> CalcResult<T> {
+    fn unwrap(self)->T {
+        match self {
+            Calc::Ok(v) => v,
+            Calc::Err(err) => panic!("{:?}", err),
+            Calc::Quit => panic!("unexpected quit message")
+        }
+    }
+}
 
 impl<T> Val<T> where T: Vm, T::ByteCode: Display + Clone {
-    fn calc(&self, vm: &mut T)->Result<Val<T>, CalcResult> {
+    fn calc(&self, vm: &mut T)->CalcResult<Val<T>> {
         match self {
-            &Nil | &Lambda(_) | &Str(_) => Ok(From::from(self)),
+            &Nil | &Lambda(_) | &Str(_) => Calc::Ok(From::from(self)),
             &Macro(ref name) => match vm.macro_expand(name) {
-                Ok(x) => Ok(Lambda(x)),
-                Err(Signal::Continue) => Ok(Nil),
-                Err(err) => Err(Sgl(err))
+                MacroResult::Ok(x) => Calc::Ok(Lambda(x)),
+                MacroResult::Err(err) => Calc::Err(err),
+                MacroResult::Continue => Calc::Ok(Nil),
+                MacroResult::Quit => Calc::Quit
             },
             &Call(ref first, ref tail) => {
                 match first.calc(vm) {
-                    Ok(Lambda(ref lambda)) => match vm.run(lambda, tail) {
-                        Ok(x) => Ok(x),
-                        Err(err) => Err(Msg(format!("runtime error: {}", err)))
+                    Calc::Ok(Lambda(ref lambda)) => match vm.run(lambda, tail) {
+                        Ok(x) => Calc::Ok(x),
+                        Err(err) => Calc::Err(format!("runtime error: {}", err))
                     },
-                    Ok(v) => Err(Msg(format!("need callable here, found {} instead", v))),
-                    Err(err) => Err(err)
+                    Calc::Ok(v) => {
+                        Calc::Err(format!("callable needed, found {} instead", v))
+                    },
+                    err @ Calc::Err(_) => err,
+                    quit @ Calc::Quit => quit
                 }
             },
             &If(ref p, ref t, ref f) => {
                 let p = match p.calc(vm) {
-                    Ok(Nil) => false,
-                    Ok(Str(ref s)) if s.is_empty() => false,
-                    Ok(_) => true,
-                    Err(err) => return Err(err)
+                    Calc::Ok(Nil) => false,
+                    Calc::Ok(Str(ref s)) if s.is_empty() => false,
+                    Calc::Ok(_) => true,
+                    err @ Calc::Err(_) => return err,
+                    quit @ Calc::Quit => return quit
                 };
-                Ok(try!(if p {
+                if p {
                     t.calc(vm)
                 } else {
                     f.calc(vm)
-                }))
+                }
             }
         }
     }
@@ -291,14 +300,9 @@ pub fn repl<T>(vm: &mut T) where
                     println!("error: unexpected `{}`", c.escape_default().collect::<String>());
                 } else {
                     println!("{}", match x.calc(vm) {
-                        Ok(x) => format!("{}", x),
-                        Err(Msg(msg)) => format!("failed to calculate: {}", msg),
-                        Err(Sgl(Signal::Quit)) => return,
-                        Err(Sgl(Signal::Continue)) => String::new(),
-                        Err(Sgl(Signal::Fail(err))) => {
-                            format!("{}", err)
-                        },
-                        Err(Sgl(Signal::Smoke)) => "broken implementation".to_string()
+                        Calc::Ok(x) => x.to_string(),
+                        Calc::Err(err) => err,
+                        Calc::Quit => return
                     })
                 }
             },

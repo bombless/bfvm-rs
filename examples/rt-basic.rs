@@ -41,11 +41,5 @@ mod mock {
         type ByteCode = Code;
         type Convert = Convert;
         type CompileFail = String;
-        fn macro_expand<'a>(&mut self, _: &'a str)->Result<Code, ::rt::Signal> {
-            Ok(Code)
-        }
-        fn run(&mut self, _: &Code, _: &Vec<::rt::Val<Self>>)->Result<::rt::Val<Self>, String> {
-            Err("mock".to_string())
-        }
     }
 }
