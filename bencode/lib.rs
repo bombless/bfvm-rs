@@ -3,9 +3,6 @@
 
 use std::fmt::{Debug, Formatter, Error};
 
-const E: u8 = b'e';
-const COLON: u8 = b':';
-
 pub fn object<'a>(kind: &'a str, content: &'a [u8])->Vec<u8> {
     let mut ret = Vec::new();
     ret.push(b'd');
@@ -109,7 +106,7 @@ pub fn parse(s: &mut Iterator<Item=u8>)->Result<Value, ParseResult> {
             'i' => Integer(try!(parse_integer(s))),
             'l' => List(try!(parse_list(s))),
             'd' => Dict(try!(parse_dict(s))),
-            'e' => return Err(Char(E)),
+            'e' => return Err(Char(b'e')),
             _ => ByteString(try!(parse_byte_string(b, s)))
         })
     }
@@ -120,7 +117,7 @@ fn parse_byte_string(b: u8, s: &mut Iterator<Item=u8>)->Result<Vec<u8>, ParseRes
     if b == b'0' {
         return match s.next() {
             None => Err(Eof),
-            Some(COLON) => Ok(Vec::new()),
+            Some(b';') => Ok(Vec::new()),
             Some(_) => Err(Char(b))
         }
     }
@@ -134,7 +131,7 @@ fn parse_byte_string(b: u8, s: &mut Iterator<Item=u8>)->Result<Vec<u8>, ParseRes
             Some(x) if x >= b'0' && x <= b'9' => {
                 len = len * 10 + (x as u32 - '0' as u32)
             },
-            Some(COLON) => break,
+            Some(b':') => break,
             Some(x) =>return Err(Char(x))
         }
     }
@@ -154,7 +151,7 @@ fn parse_list(s: &mut Iterator<Item=u8>)->Result<Vec<Value>, ParseResult> {
     loop {
         match parse(s) {
             Ok(v) => ret.push(v),
-            Err(Char(E)) => return Ok(ret),
+            Err(Char(b'e')) => return Ok(ret),
             Err(err) => return Err(err)
         }
     }
@@ -166,7 +163,7 @@ fn parse_dict(s: &mut Iterator<Item=u8>)->Result<Vec<(Vec<u8>, Value)>, ParseRes
         let k = match parse(s) {
             Ok(ByteString(v)) => v,
             Ok(v) => return Err(Val(v)),
-            Err(Char(E)) => return Ok(ret),
+            Err(Char(b'e')) => return Ok(ret),
             Err(err) => return Err(err)
         };
         let v = try!(parse(s));
@@ -175,16 +172,14 @@ fn parse_dict(s: &mut Iterator<Item=u8>)->Result<Vec<(Vec<u8>, Value)>, ParseRes
 }
 
 fn parse_integer(s: &mut Iterator<Item=u8>)->Result<i32, ParseResult> {
-    const ZERO: u8 = b'0';
-    const MINUS: u8 = b'-';
     let (mut ret, sign) = match s.next() {
         None => return Err(Eof),
-        Some(ZERO) => return match s.next() {
-            Some(E) => Ok(0),
+        Some(b'0') => return match s.next() {
+            Some(b'e') => Ok(0),
             Some(x) => Err(Char(x)),
             None => Err(Eof)
         },
-        Some(MINUS) => (0, -1),
+        Some(b'-') => (0, -1),
         Some(x) if x > b'0' && x <= b'9' => {
             (x as i32 - '0' as i32, 1)
         },
@@ -193,7 +188,7 @@ fn parse_integer(s: &mut Iterator<Item=u8>)->Result<i32, ParseResult> {
     loop {
         match s.next() {
             None => return Err(Eof),
-            Some(E) => return Ok(sign * ret),
+            Some(b'e') => return Ok(sign * ret),
             Some(x) if (x >= b'0' && x <= b'9') && !(ret == 0 && x == b'0') => {
                 ret = ret * 10 + x as i32 - '0' as i32
             },
