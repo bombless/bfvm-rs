@@ -1,31 +1,3 @@
-
-/// example code here:
-/// ```rust
-/// pub fn main() {
-///     println!("{:?}", parse_lambda::<mock::Vm>(&mut "`a'".chars()));
-/// }
-///
-/// mod mock {
-///     pub struct Vm;
-///     #[derive(Debug, Clone)]
-///     pub struct Code;
-///     impl From<String> for Result<Code, String> {
-///         fn from(_: String)->Self {
-///             Ok(Code)
-///         }
-///     }
-///     impl super::Vm for Vm {
-///         type ByteCode = Code;
-///         fn macro_expand<'a>(&mut self, _: &'a str)->Result<Code, super::Signal> {
-///             Ok(Code)
-///         }
-///         fn run(&mut self, _: &Code, _: &Vec<super::Val<Self>>)->Result<super::Val<Self>, String> {
-///             Err("mock".to_string())
-///         }
-///     }
-/// }
-/// ```
-///
 use std::rc::Rc;
 use std::fmt::{Formatter, Error, Debug, Display};
 
