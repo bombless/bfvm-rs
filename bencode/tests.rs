@@ -17,9 +17,9 @@ impl ToValue for Vec<Value> {
     }
 }
 
-impl ToValue for Vec<u8> {
+impl<'a> ToValue for &'a [u8] {
     fn to_value(self)->Value {
-        Value::ByteString(self)
+        Value::ByteString(Vec::new() + self)
     }
 }
 
@@ -50,20 +50,15 @@ fn test_list() {
 
 #[test]
 fn test_dict() {
-    let first = (byte_string(b"1"), Value::Integer(2));
-    let second = (byte_string(b"2"), Value::Integer(3));
-    let third = (byte_string(b"3"), Value::Integer(5));
+    let first = (Vec::new() + b"1", Value::Integer(2));
+    let second = (Vec::new() + b"2", Value::Integer(3));
+    let third = (Vec::new() + b"3", Value::Integer(5));
     let code = b"d1:1i2e1:2i3e1:3i5ee";
     eq(code, vec![ first, second, third ])
 }
 
-#[cfg(test)]
-#[inline]
-fn byte_string(v: &[u8])->Vec<u8> {
-    From::from(v)
-}
 
 #[test]
 fn test_byte_string() {
-    eq(b"5:hello", byte_string(b"hello"))
+    eq(b"5:hello", &b"hello"[..])
 }

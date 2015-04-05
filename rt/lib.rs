@@ -29,17 +29,22 @@
 use std::rc::Rc;
 use std::fmt::{Formatter, Error, Debug, Display};
 
-pub trait Vm {
+pub trait Vm: {
     type ByteCode;
     type CompileFail;
     type Convert;
-    fn macro_expand<'a>(&mut self, &'a str)->Result<Self::ByteCode, Signal>;
-    fn run(&mut self, &Self::ByteCode, &Vec<Val<Self>>)->Result<Val<Self>, String>;
+    fn macro_expand<'a>(&mut self, _: &'a str)->Result<Self::ByteCode, Signal> {
+        Err(Signal::Smoke)
+    }
+    fn run(&mut self, _: &Self::ByteCode, _: &Vec<Val<Self>>)->Result<Val<Self>, String> {
+            Err("method `run` not implemented".to_string())
+    }
 }
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Signal {
     Fail(String),
+    Smoke,
     Continue,
     Quit
 }
@@ -50,7 +55,7 @@ impl From<String> for Signal {
     }
 }
 
-pub enum Val<T: Vm> {
+pub enum Val<T: Vm + ?Sized> {
     Str(String),
     If(Rc<Val<T>>, Rc<Val<T>>, Rc<Val<T>>),
     Lambda(T::ByteCode),
@@ -318,7 +323,8 @@ pub fn repl<T>(vm: &mut T) where
                         Err(Sgl(Signal::Continue)) => String::new(),
                         Err(Sgl(Signal::Fail(err))) => {
                             format!("{}", err)
-                        }
+                        },
+                        Err(Sgl(Signal::Smoke)) => "broken implementation".to_string()
                     })
                 }
             },
