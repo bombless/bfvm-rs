@@ -180,9 +180,9 @@ impl<T> Val<T> where T: Vm, T::ByteCode: Display + Clone {
             },
             &If(ref p, ref t, ref f) => {
                 let p = match p.calc(vm) {
-                    Ok(Nil) => true,
-                    Ok(Str(ref s)) if s.is_empty() => true,
-                    Ok(_) => false,
+                    Ok(Nil) => false,
+                    Ok(Str(ref s)) if s.is_empty() => false,
+                    Ok(_) => true,
                     Err(err) => return Err(err)
                 };
                 Ok(try!(if p {
