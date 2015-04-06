@@ -1,6 +1,3 @@
-#![allow(unused_attributes, unused_features)]
-#![feature(convert)]
-
 use std::fmt::{Debug, Formatter, Error};
 
 pub fn object<'a>(kind: &'a str, content: &'a [u8])->Vec<u8> {
