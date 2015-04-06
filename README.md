@@ -7,9 +7,9 @@ Implement `bf::Vm::print` as an instance of trait `bf::Echo`,
 naming `NaiveMinimumMemory`, and implement 3 more instances,
 `MinimumMemory`, `DumbSeek`, `NaiveShortestCode`
 
-Quoted Value
+Quoted Value (Optional)
 --
-- [ ] (Optional)
+- [ ]
 Add syntax element and `rt::Val` variant `Quote` to runtime,
 representing a `rt:Val` that should not be evaluated,
 using syntax ``(rt:Val content here)~`.
@@ -18,9 +18,9 @@ Consider using `#`, `%`, `^`, `&`, or `*` for leading character.
 `+` won't be a choice here, because bf itself use `+` as element.
 I prefer `~` for enclosing delim here
 
-Evaluating Quoted Value
+Evaluating Quoted Value (Optional)
 --
-- [ ] (Optional)
+- [ ]
 Add feature to evaluate quoted value.
 Have no idea what syntax should be used here
 
