@@ -80,11 +80,11 @@ impl Vm {
             fn put(&mut self, tar: u8)->Vec<ByteCode> {
                 use std::iter::repeat;
                 let now = self.0;
+                self.0 = tar;
                 let diff = tar as i32 - now as i32;
                 let rep = repeat(if diff < 0 { ByteCode::Minus } else { ByteCode::Plus });
                 let mut ret = rep.take(diff.abs() as usize).collect::<Vec<_>>();
                 ret.push(ByteCode::Dot);
-                self.0 = ((diff + self.0 as i32 + 256) % 256) as u8;
                 ret
             }
         }
