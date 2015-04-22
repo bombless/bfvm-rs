@@ -73,7 +73,7 @@ expanding macro, round brackets for arguments list (plain list here, we already
 have it). So function call will still be called run-after-macro-expanding.
 In this manner, we have 2 global namespaces:
  * one for macros, in convention we return byte code value here, but we may
- break this limitation.
+ break this limitation,
 
  * the other for values. The parser should track whether the value fetching
  is happened inside a function or not. If it is, that will be a new question
@@ -146,7 +146,7 @@ In this manner, we have 2 global namespaces:
 用标识符来调用虚拟机字节码，或者说，宏展开，用圆括号来做函数参数表
 （就用普通的表，我们已经有了）。这样函数调用将仍然被称为是“在宏展开后运行”。
 用这种方式，我们有了两种全局名字空间：
- * 一个是宏用的，惯例返回字节码，但是我们也可以去除这个限制
+ * 一个是宏用的，惯例返回字节码，但是我们也可以去除这个限制，
  * 另一个是值的名字空间。解析器应该追踪值的获取是否发生在函数内。
  如果是的，就会引出关于函数体支持的问题。如果不是，我们把它添加到全局变量空间去。
 - 我想我们也许要开一个新的仓库叫 php-rs，来支持最后这个想法。
