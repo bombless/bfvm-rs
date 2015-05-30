@@ -18,7 +18,7 @@ impl ToValue for Vec<Value> {
 
 impl<'a> ToValue for &'a [u8] {
     fn to_value(self)->Value {
-        Value::ByteString(Vec::new() + self)
+        Value::ByteString(self.iter().cloned().collect())
     }
 }
 
