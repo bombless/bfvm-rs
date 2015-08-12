@@ -65,6 +65,11 @@ pub fn bencode2rt<T>(v: Value)->RtVal<T>
                 _ => RtVal::Nil
             }
         },
+        Value::List(mut l) => if l.is_empty() {
+            RtVal::Nil
+        } else {
+            bencode2rt(l.remove(0))
+        },
         Value::ByteString(s) => match String::from_utf8(s) {
             Ok(s) => RtVal::Str(s),
             _ => RtVal::Nil

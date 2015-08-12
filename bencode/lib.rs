@@ -129,7 +129,7 @@ fn parse_byte_string(b: u8, s: &mut Iterator<Item=u8>)->Result<Vec<u8>, ParseErr
                 len = len * 10 + (x as u32 - '0' as u32)
             },
             Some(b':') => break,
-            Some(x) =>return Err(Char(x))
+            Some(x) => return Err(Char(x))
         }
     }
     let mut ret = Vec::new();

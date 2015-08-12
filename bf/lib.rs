@@ -74,6 +74,25 @@ impl<'a> From<&'a str> for Convert {
 
 
 impl Vm {
+    pub fn add_one()->Vm {
+        Vm(vec![
+            ByteCode::Comma,
+            ByteCode::Dot,
+            ByteCode::Gt,
+            ByteCode::Comma,
+            ByteCode::Dot,
+            ByteCode::Gt,
+            ByteCode::Comma,
+            ByteCode::Dot,
+            ByteCode::Gt,
+            ByteCode::Comma,
+            ByteCode::Plus,
+            ByteCode::Dot,
+            ByteCode::Gt,
+            ByteCode::Comma,
+            ByteCode::Dot,
+            ])
+    }
     pub fn print(s: &[u8])->Vm {
         struct Tracker(u8);
         impl Tracker {

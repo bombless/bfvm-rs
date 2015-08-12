@@ -51,6 +51,7 @@ impl rt::Vm for BfVm {
         let ret = match id {
             "greeting" => Macro::Ok(bf::Vm::print(&bencode::byte_string(b"hello, world"))),
             "A" => Macro::Ok(bf::Vm::print(b"1:A")),
+            "add_one" => Macro::Ok(bf::Vm::add_one()),
             "log" => {
                 let log = self.to_string();
                 Macro::Ok(bf::Vm::print(&bencode::byte_string(log.as_bytes())))
@@ -107,7 +108,6 @@ impl rt::Vm for BfVm {
         }
         let mut ret = Vec::new();
         while let Ok(n) = data.recv() {
-            //println!("line {}, receiving 0x{:X}", line!(), n);
             ret.push(n)
         }
         match bencode::parse(&mut ret.iter().cloned()) {
